@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "feisty-lamp-429606-n1",
+  "private_key_id": "4b93e0e016588121bf736caebc72f7df277eb15f",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCuP43Evli12dYf\nQbeVG3IjUjQQ2obxbHAcb3Sy67QTTDVhEcq71MUNYoG8Dd5uYqT0EKROZIPx9JKJ\nLaHTyRMkJ+mI2HGd3c54CljC1o9P5LFvzQ3lKDJHcEJ1bcFpt6EllI0Waqpl4EPH\n0K49qv9zD/DhmwkAQ44TNwWnpbW/Cin51OIMdJAzW6PS5u03bO2QZ0cT3beQW6R1\nXzXzbbJbJT7QNb5ZjA5gdXArzZdSEgw7REsWH8ToSk267tAh7zGq9vmVg+QWroZl\nc4SlBkJ+SYYLZ+fPgT9alKX0qiGCwzC2qMr7haqKmxADPhsI6MKf1z6byPeOBF3l\nzETlyATHAgMBAAECggEAPoUSHl33oWQEJlnjf04GMXMsuEFYOqZgQWuiMRJOHcBx\nxJ7oIWXRwCAwkWNehDfDnMid03zQNM++hhbH4h/azNW/Prj+ZxivHLYFq/7lE9Ln\n8UffLPIzvBsk1VJom8BlwwCecMUb14rUdwzCf+DrYAL/uEryu1QB1ZYf4subvuvU\nECN5zl/VmiU6HefiTfh+9dbDYWtO+gsMZgPV6GVb/eXBI/5EbzWNswWmXRiin14k\nH9al5lKx0rgTjBhKJ0R7EGdeA9LnD1P8ZmrjSzg+oberSojPefFpx29q+5PrWCuh\nZ0/3I2/QImuRiq9O8QuoA48/Nj1yzz7H5X8pezkGVQKBgQDl+4HI7iaretyEaKB1\noTuoYtTbKUGM027Ta72EcCS84Ud31KH8qORYWycsfXhp9qUw5/GfbsS2bfT1nUR9\nnVDd/biCdtAX+2JizVp7N4c+qHsBG1WsLDEy9I3O2z821Ecj0gACSCCGzdcdn6AR\nUPyvEewpSrq8ZCjlofxX+nu0tQKBgQDB9e+SGGFZPOpxYvhbVjZa68N/TzmFmgbe\nmh1TbPxX82C1Se/HZoa/GX3eXAAkhbqVdudfQVbGwugTLwEl6e40tGtR+ilOajSF\n2tpm9hrDu8ij6KaT5pWD7AlwCdsbaQ27jAI7NdIW55TVjWtR6Tu60Bo0Sj0X3bad\nt98RwvvdCwKBgHlb0a3M9fzxNWJtr5bDAS8nD/mieKOugsHwDa7QWqKNImB6hQxF\nt1FksHRKtXr9G0iGbLtcAVPfDC970MOUezLZiz7VIZQ2JEHM6V0x/R00XMxFt1zG\naSPhZt9sVJxDQlMFotmRZBCemFBahmX83Yooo/1aINX+6JHce8OVOygtAoGARWPM\n34FlYl2Oqh30KAkBzSlHeYZIV+mwx3ZvQ2dcJ8LkODdJVxbw4fEmvKRBUM+e3tX5\nFHT1rIoSKLrKOFwmYiihtGRA3tLUE4cmV2t4S8okj68t2P/HQbjx72k3P+knho8i\nRTiN/q++6V98o4NDYSQOG+LrVFx3dplPbrVJEd0CgYBlHVVckIeXkhkGviyXkSLx\nwpOzHME9vs0NH11qzPrYDclGv7xLjLvF3bwomaTahblTfb/4NUm52Pl3QBYkaAPg\nkxrhxOu9PKeH21GpWA7do0XFYaHRMoptlYsbyGXE9k3pD95LTkDfd0DgL72gCohi\nDj8Q7pe8YcvM+csjsG/+Qw==\n-----END PRIVATE KEY-----\n",
+  "client_email": "thebundledai-backup-drive@feisty-lamp-429606-n1.iam.gserviceaccount.com",
+  "client_id": "116502041502347112772",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/thebundledai-backup-drive%40feisty-lamp-429606-n1.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

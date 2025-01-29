@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// prisma/schema.prisma
+
+enum BackupEnvironment {
+  PRODUCTION
+  DEVELOPMENT
+}
+
+enum TriggerMethod {
+  CRON
+  MANUAL
+}
+
+enum RestoreStatus {
+  PENDING
+  IN_PROGRESS
+  SUCCESS
+  FAILED
+}
+
+model Backup {
+  id          String            @id @default(uuid())
+  createdAt   DateTime          @default(now())
+  dbName      String
+  // Which environment is backed up: PRODUCTION or DEVELOPMENT
+  environment BackupEnvironment
+
+  // Whether it was triggered by a CRON job or MANUAL request
+  triggeredBy TriggerMethod
+
+  // (Optional) If you store backups on Google Drive
+  driveFolderId String? // Google Drive folder ID
+  driveFileId   String? // Google Drive file ID
+  localPath     String? // Local backup path
+
+  // If you want to track multiple restore attempts for this backup
+  restores Restore[]
+}
+
+model Restore {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  // PENDING, IN_PROGRESS, SUCCESS, or FAILED
+  status RestoreStatus @default(PENDING)
+
+  // Which backup this restore is using
+  backup   Backup @relation(fields: [backupId], references: [id])
+  backupId String
+}

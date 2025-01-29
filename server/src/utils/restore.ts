@@ -1,56 +1,148 @@
-// apps/backup-service/src/restore.ts
+// src/restoreFromDrive.ts
 
-import { exec } from "child_process";
-import util from "util";
+import fs from "fs";
 import path from "path";
+import util from "util";
+import { google } from "googleapis";
+import { exec } from "child_process";
+import unzipper from "unzipper";
+import { PrismaClient } from "@prisma/client";
 
 const execPromise = util.promisify(exec);
+const prisma = new PrismaClient();
+
+// For logging, we can define a helper function
+function logMessage(message: string) {}
 
 interface RestoreOptions {
-  backupPath: string; // e.g. /home/backups/YYYY-MM-DD/production
-  mongoUri: string;
-  dbName: string;
+  backupId: string; // the ID of the Backup row in DB
+  restoreMongoUri: string; // Mongo connection for `mongorestore`
   collections?: string[]; // optional: if you only want to restore certain collections
 }
 
-/**
- * If `collections` is specified, restore only those. Otherwise, restore entire DB.
- */
-export async function restoreDatabase(options: RestoreOptions): Promise<void> {
-  const { backupPath, mongoUri, dbName, collections } = options;
+export async function restoreBackupFromDrive(options: RestoreOptions) {
+  const { backupId, restoreMongoUri, collections } = options;
 
-  // If no specific collections, restore entire directory at once.
-  if (!collections || collections.length === 0) {
-    // Example:
-    // mongorestore --uri="mongodb://localhost:27017" --nsFrom="production.*" --nsTo="production.*" /home/backups/2025-01-01/production
-    const restoreCmd = `mongorestore --uri="${mongoUri}" --nsFrom="${dbName}.*" --nsTo="${dbName}.*" ${backupPath}`;
-    try {
-      const { stdout, stderr } = await execPromise(restoreCmd);
-      console.log(
-        `[${dbName} Restore] success. stdout: ${stdout}, stderr: ${stderr}`
-      );
-    } catch (error) {
-      console.error(`[${dbName} Restore Error]`, error);
-      throw error;
+  // Create a new Restore record
+  const restoreRecord = await prisma.restore.create({
+    data: {
+      status: "PENDING",
+      backup: { connect: { id: backupId } },
+    },
+  });
+
+  try {
+    const restoredBackup = await prisma.backup.findUnique({
+      where: { id: backupId },
+      select: {
+        driveFileId: true,
+        dbName: true,
+        localPath: true,
+        environment: true,
+      },
+    });
+
+    if (!restoredBackup) {
+      throw new Error(`Backup with ID ${backupId} not found.`);
     }
-    return;
-  }
 
-  // Otherwise, restore each collection individually
-  // e.g., for each collection "users", do:
-  // mongorestore --uri="..." --nsFrom="dbName.users" --nsTo="dbName.users" --collection=users /path/to/users.bson
-  for (const col of collections) {
-    const bsonFilePath = path.join(backupPath, dbName, `${col}.bson`);
-    const restoreCmd = `mongorestore --uri="${mongoUri}" --nsFrom="${dbName}.${col}" --nsTo="${dbName}.${col}" --collection=${col} ${bsonFilePath}`;
+    const { driveFileId, dbName, environment: fileName } = restoredBackup;
 
-    try {
-      const { stdout, stderr } = await execPromise(restoreCmd);
-      console.log(
-        `[${dbName} Collection Restore] success. stdout: ${stdout}, stderr: ${stderr}`
+    if (!driveFileId) {
+      throw new Error(
+        `Backup with ID ${backupId} does not have a Google Drive ID.`
       );
-    } catch (error) {
-      console.error(`[${dbName} Collection Restore Error]`, error);
-      throw error;
     }
+
+    // 2. Download the .zip from Google Drive
+    const localZipPath = path.join(__dirname, "..", "tmp", fileName);
+    fs.mkdirSync(path.dirname(localZipPath), { recursive: true });
+
+    await downloadFromGoogleDrive(driveFileId, localZipPath);
+    logMessage(
+      `Downloaded backup '${fileName}' from Drive to '${localZipPath}'.`
+    );
+
+    // 3. Unzip the archive
+    const unzippedFolderPath = localZipPath.replace(".zip", "");
+    await unzipFile(localZipPath, unzippedFolderPath);
+    logMessage(`Unzipped backup into: ${unzippedFolderPath}`);
+
+    // 4. Build the restore command
+    if (!collections || collections.length === 0) {
+      const cmd = `mongorestore --uri="${restoreMongoUri}" --nsFrom="${dbName}.*" --nsTo="${dbName}.*" "${unzippedFolderPath}"`;
+      logMessage(`Running restore command: ${cmd}`);
+      await execPromise(cmd);
+    } else {
+      for (const col of collections) {
+        const bsonPath = path.join(unzippedFolderPath, dbName, `${col}.bson`);
+        if (!fs.existsSync(bsonPath)) {
+          logMessage(`Warning: collection file not found: ${bsonPath}`);
+          continue;
+        }
+        const cmd = `mongorestore --uri="${restoreMongoUri}" --nsFrom="${dbName}.${col}" --nsTo="${dbName}.${col}" --collection=${col} "${bsonPath}"`;
+        logMessage(`Restoring collection: ${col} via: ${cmd}`);
+        await execPromise(cmd);
+      }
+    }
+
+    logMessage(`Restore completed for backup ${backupId}.`);
+
+    // Update the Restore record status to SUCCESS
+    await prisma.restore.update({
+      where: { id: restoreRecord.id },
+      data: { status: "SUCCESS" },
+    });
+
+    // 5. (Optional) Clean up local .zip and extracted folder
+    fs.unlinkSync(localZipPath);
+    fs.rmSync(unzippedFolderPath, { recursive: true, force: true });
+    logMessage(`Cleaned up local files.`);
+  } catch (error) {
+    console.error(`[Restore Error]`, error);
+
+    // Update the Restore record status to FAILED
+    await prisma.restore.update({
+      where: { id: restoreRecord.id },
+      data: { status: "FAILED" },
+    });
+
+    throw error;
   }
+}
+
+/** Download a file from Google Drive by file ID. */
+async function downloadFromGoogleDrive(fileId: string, destPath: string) {
+  const auth = new google.auth.GoogleAuth({
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+  });
+  const driveService = google.drive({ version: "v3", auth });
+
+  const dest = fs.createWriteStream(destPath);
+
+  // Streams the file from Drive into dest
+  const res = await driveService.files.get(
+    { fileId, alt: "media" },
+    { responseType: "stream" }
+  );
+
+  return new Promise<void>((resolve, reject) => {
+    res.data
+      .on("end", () => resolve())
+      .on("error", (err: any) => reject(err))
+      .pipe(dest);
+  });
+}
+
+/** Unzip the downloaded .zip to a target folder. */
+async function unzipFile(
+  zipPath: string,
+  extractToPath: string
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    fs.createReadStream(zipPath)
+      .pipe(unzipper.Extract({ path: extractToPath }))
+      .on("close", resolve)
+      .on("error", reject);
+  });
 }

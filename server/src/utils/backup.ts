@@ -7,34 +7,54 @@ import util from "util";
 import { google } from "googleapis";
 import archiver from "archiver";
 import { createOrGetSubfolder } from "./createOrGetSubfolder";
+import { PrismaClient } from "@prisma/client";
 
 const execPromise = util.promisify(exec);
+const prisma = new PrismaClient();
 
 interface BackupOptions {
+  isProduction: boolean;
   dbName: string;
   backupPath: string; // local folder path
   mongoUri: string;
   saveToDrive?: boolean;
   driveMainFolderId?: string; // e.g. the ID for "data-backup"
   dateFolderName?: string; // e.g. "2025-01-26"
+  isManual: boolean; // if this is a manual backup
 }
 
-const GOOGLE_SERVICE_ACCOUNT_PATH =
-  process.env.GOOGLE_SERVICE_ACCOUNT_PATH ||
-  path.resolve(__dirname, "../../config.json");
-const DEFAULT_MAIN_FOLDER_ID =
-  process.env.GOOGLE_DRIVE_MAIN_FOLDER_ID ||
-  "1kVJCwczYnjDNFCWzhpZIDtQtkatrTPOm";
+const GOOGLE_SERVICE_ACCOUNT_PATH = path.resolve(
+  __dirname,
+  "../../config.json"
+);
+
+const DEFAULT_MAIN_FOLDER_ID = process.env.GOOGLE_DRIVE_MAIN_FOLDER_ID;
 
 export async function backupDatabase(options: BackupOptions): Promise<void> {
   const {
+    isProduction,
     dbName,
     backupPath,
     mongoUri,
     saveToDrive,
     driveMainFolderId,
     dateFolderName,
+    isManual,
   } = options;
+
+  if (!DEFAULT_MAIN_FOLDER_ID) {
+    throw new Error("No main Drive folder ID specified.");
+  }
+
+  // Create a new Backup record
+  const backupRecord = await prisma.backup.create({
+    data: {
+      environment: isProduction ? "PRODUCTION" : "DEVELOPMENT",
+      triggeredBy: isManual ? "MANUAL" : "CRON",
+      localPath: saveToDrive ? null : backupPath,
+      dbName: dbName,
+    },
+  });
 
   // 1. Ensure local backup directory
   if (!fs.existsSync(backupPath)) {
@@ -52,6 +72,7 @@ export async function backupDatabase(options: BackupOptions): Promise<void> {
   // 4. (Optional) Upload to Google Drive
   if (saveToDrive) {
     const mainFolderId = driveMainFolderId || DEFAULT_MAIN_FOLDER_ID;
+
     if (!mainFolderId) {
       throw new Error("No main Drive folder ID specified.");
     }
@@ -59,14 +80,22 @@ export async function backupDatabase(options: BackupOptions): Promise<void> {
       throw new Error("No date folder name specified for subfolder.");
     }
 
-    // We'll create (or find) the date subfolder under data-backup
     const dateFolderId = await getDriveSubfolderId(
       mainFolderId,
-      dateFolderName
+      dateFolderName,
+      isManual
     );
+    const driveFileId = await uploadToGoogleDrive(zipFilePath, dateFolderId);
 
-    // Then upload production.zip or development.zip to that date subfolder
-    await uploadToGoogleDrive(zipFilePath, dateFolderId);
+    // Update the Backup record with Google Drive metadata
+    await prisma.backup.update({
+      where: { id: backupRecord.id },
+      data: {
+        driveFolderId: dateFolderId,
+        driveFileId: driveFileId,
+      },
+    });
+
     console.log(`Uploaded ${dbName}.zip to Drive folder ${dateFolderName}.`);
   }
 
@@ -92,7 +121,8 @@ async function zipDirectory(sourceDir: string, outPath: string): Promise<void> {
 /** Create or retrieve the date subfolder inside the main folder. */
 async function getDriveSubfolderId(
   mainFolderId: string,
-  dateFolderName: string
+  dateFolderName: string,
+  isManual: boolean
 ): Promise<string> {
   // 1. Auth
   const auth = new google.auth.GoogleAuth({
@@ -105,7 +135,8 @@ async function getDriveSubfolderId(
   const subfolderId = await createOrGetSubfolder(
     driveService,
     mainFolderId,
-    dateFolderName
+    dateFolderName,
+    isManual
   );
   return subfolderId;
 }
@@ -129,9 +160,11 @@ async function uploadToGoogleDrive(filePath: string, folderId: string) {
     body: fs.createReadStream(filePath),
   };
 
-  await driveService.files.create({
+  const file = await driveService.files.create({
     requestBody: fileMetadata,
     media,
     fields: "id",
   });
+
+  return file.data.id;
 }

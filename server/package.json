@@ -7,25 +7,33 @@
     "dev": "tsc-watch --onSuccess \"node dist/app.js\"",
     "build": "tsc -p ."
   },
+  "prisma": {
+    "schema": "src/prisma/schema.prisma"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "description": "",
   "dependencies": {
+    "@prisma/client": "^6.3.0",
     "archiver": "^7.0.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "googleapis": "^144.0.0",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "unzipper": "^0.12.3"
   },
   "devDependencies": {
     "@types/archiver": "^6.0.3",
     "@types/express": "^5.0.0",
-    "@types/node": "^22.10.10",
+    "@types/node": "^22.12.0",
     "@types/node-cron": "^3.0.11",
+    "@types/unzipper": "^0.10.10",
+    "prisma": "^6.3.0",
     "tsc-watch": "^6.2.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }
 }

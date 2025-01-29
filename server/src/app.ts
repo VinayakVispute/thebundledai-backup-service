@@ -17,12 +17,15 @@ app.use("/api", router);
 const PORT = process.env.BACKUP_SERVICE_PORT || 4000;
 const BASE_BACKUP_DIR = path.join(__dirname, "backups");
 
-const MONGO_URI_PRODUCTION =
-  process.env.MONGO_URI_PRODUCTION ||
-  "mongodb+srv://officialfounderfeed:officialfounderfeed@cluster0.tupwyg6.mongodb.net";
-const MONGO_URI_DEVELOPMENT =
-  process.env.MONGO_URI_DEVELOPMENT ||
-  "mongodb+srv://officialfounderfeed:officialfounderfeed@cluster0.tupwyg6.mongodb.net";
+const MONGO_URI_PRODUCTION = process.env.MONGO_URI_PRODUCTION;
+const MONGO_URI_DEVELOPMENT = process.env.MONGO_URI_DEVELOPMENT;
+
+if (!MONGO_URI_PRODUCTION || !MONGO_URI_DEVELOPMENT) {
+  console.error(
+    "Missing MONGO_URI_PRODUCTION or MONGO_URI_DEVELOPMENT in environment variables."
+  );
+  process.exit(1);
+}
 
 app.listen(PORT, () => {
   console.log(`Backup service running on port ${PORT}`);
@@ -38,7 +41,8 @@ cron.schedule("* * * * *", async () => {
     await performDailyBackups(
       BASE_BACKUP_DIR,
       MONGO_URI_PRODUCTION,
-      MONGO_URI_DEVELOPMENT
+      MONGO_URI_DEVELOPMENT,
+      false
     );
     console.log("Daily backup job completed successfully.");
   } catch (error) {

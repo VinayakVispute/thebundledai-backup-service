@@ -9,6 +9,7 @@ import archiver from "archiver";
 import { createOrGetSubfolder } from "./createOrGetSubfolder";
 import { PrismaClient } from "@prisma/client";
 import { env } from "../env";
+import { addLogEntry } from "./logger";
 
 const execPromise = util.promisify(exec);
 const prisma = new PrismaClient();
@@ -43,15 +44,25 @@ export async function backupDatabase(options: BackupOptions): Promise<void> {
     isManual,
   } = options;
 
+  const environment = isProduction ? "PRODUCTION" : "DEVELOPMENT";
+  const triggeredBy = isManual ? "MANUAL" : "CRON";
+
+  await addLogEntry(
+    "backup-process",
+    `Starting backup for ${environment} database: ${dbName}`
+  );
+
   if (!DEFAULT_MAIN_FOLDER_ID) {
-    throw new Error("No main Drive folder ID specified.");
+    const errorMessage = "No main Drive folder ID specified.";
+    await addLogEntry("backup-process", errorMessage);
+    throw new Error(errorMessage);
   }
 
   // Create a new Backup record
   const backupRecord = await prisma.backup.create({
     data: {
-      environment: isProduction ? "PRODUCTION" : "DEVELOPMENT",
-      triggeredBy: isManual ? "MANUAL" : "CRON",
+      environment,
+      triggeredBy,
       localPath: saveToDrive ? null : backupPath,
       dbName: dbName,
     },
@@ -69,16 +80,21 @@ export async function backupDatabase(options: BackupOptions): Promise<void> {
   // 3. Zip the folder
   const zipFilePath = backupPath + ".zip"; // e.g. E:\...\2025-01-26\production.zip
   await zipDirectory(backupPath, zipFilePath);
+  await addLogEntry("backup-process", `Backup zipped at: ${zipFilePath}`);
 
   // 4. (Optional) Upload to Google Drive
   if (saveToDrive) {
     const mainFolderId = driveMainFolderId || DEFAULT_MAIN_FOLDER_ID;
 
     if (!mainFolderId) {
-      throw new Error("No main Drive folder ID specified.");
+      const errorMessage = "No main Drive folder ID specified.";
+      await addLogEntry("backup-process", errorMessage);
+      throw new Error(errorMessage);
     }
     if (!dateFolderName) {
-      throw new Error("No date folder name specified for subfolder.");
+      const errorMessage = "No date folder name specified for subfolder.";
+      await addLogEntry("backup-process", errorMessage);
+      throw new Error(errorMessage);
     }
 
     const dateFolderId = await getDriveSubfolderId(
@@ -97,11 +113,18 @@ export async function backupDatabase(options: BackupOptions): Promise<void> {
       },
     });
 
-    console.log(`Uploaded ${dbName}.zip to Drive folder ${dateFolderName}.`);
+    await addLogEntry(
+      "backup-process",
+      `Uploaded ${dbName}.zip to Drive folder ${dateFolderName}.`
+    );
   }
 
   // 5. Optional: Remove local ZIP or keep it
   fs.unlinkSync(zipFilePath);
+  await addLogEntry(
+    "backup-process",
+    `Backup process completed for ${environment} database: ${dbName}`
+  );
 }
 
 /** Zip a directory using archiver */

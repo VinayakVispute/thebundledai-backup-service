@@ -2,6 +2,7 @@
 import path from "path";
 import { backupDatabase } from "./backup";
 import { env } from "../env";
+import { addLogEntry } from "./logger";
 
 const MAIN_FOLDER_ID = env.GOOGLE_DRIVE_MAIN_FOLDER_ID;
 
@@ -12,6 +13,11 @@ export async function performDailyBackups(
   isManual: boolean
 ) {
   const today = new Date().toISOString().split("T")[0]; // e.g. "2025-01-27"
+
+  await addLogEntry(
+    "backup-process",
+    `Starting daily backups for date: ${today}`
+  );
 
   const baseDateFolder = isManual ? path.join(today, "manual") : today;
 
@@ -39,7 +45,6 @@ export async function performDailyBackups(
     baseDateFolder,
     "development"
   );
-  console.log(developmentBackupPath);
 
   await backupDatabase({
     isProduction: false,
@@ -52,5 +57,8 @@ export async function performDailyBackups(
     isManual,
   });
 
-  console.log(`Daily backups completed for date: ${today}`);
+  await addLogEntry(
+    "backup-process",
+    `Daily backups completed for date: ${today}`
+  );
 }

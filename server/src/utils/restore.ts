@@ -7,12 +7,10 @@ import { google } from "googleapis";
 import { exec } from "child_process";
 import unzipper from "unzipper";
 import { PrismaClient } from "@prisma/client";
+import { addLogEntry } from "./logger";
 
 const execPromise = util.promisify(exec);
 const prisma = new PrismaClient();
-
-// For logging, we can define a helper function
-function logMessage(message: string) {}
 
 interface RestoreOptions {
   backupId: string; // the ID of the Backup row in DB
@@ -22,6 +20,11 @@ interface RestoreOptions {
 
 export async function restoreBackupFromDrive(options: RestoreOptions) {
   const { backupId, restoreMongoUri, collections } = options;
+
+  await addLogEntry(
+    "restore-process",
+    `Starting restore for backup ID: ${backupId}`
+  );
 
   // Create a new Restore record
   const restoreRecord = await prisma.restore.create({
@@ -43,15 +46,17 @@ export async function restoreBackupFromDrive(options: RestoreOptions) {
     });
 
     if (!restoredBackup) {
-      throw new Error(`Backup with ID ${backupId} not found.`);
+      const errorMessage = `Backup with ID ${backupId} not found.`;
+      await addLogEntry("restore-process", errorMessage);
+      throw new Error(errorMessage);
     }
 
     const { driveFileId, dbName, environment: fileName } = restoredBackup;
 
     if (!driveFileId) {
-      throw new Error(
-        `Backup with ID ${backupId} does not have a Google Drive ID.`
-      );
+      const errorMessage = `Backup with ID ${backupId} does not have a Google Drive ID.`;
+      await addLogEntry("restore-process", errorMessage);
+      throw new Error(errorMessage);
     }
 
     // 2. Download the .zip from Google Drive
@@ -59,34 +64,50 @@ export async function restoreBackupFromDrive(options: RestoreOptions) {
     fs.mkdirSync(path.dirname(localZipPath), { recursive: true });
 
     await downloadFromGoogleDrive(driveFileId, localZipPath);
-    logMessage(
+
+    await addLogEntry(
+      "restore-process",
       `Downloaded backup '${fileName}' from Drive to '${localZipPath}'.`
     );
 
     // 3. Unzip the archive
     const unzippedFolderPath = localZipPath.replace(".zip", "");
     await unzipFile(localZipPath, unzippedFolderPath);
-    logMessage(`Unzipped backup into: ${unzippedFolderPath}`);
+    await addLogEntry(
+      "restore-process",
+      `Unzipped backup into: ${unzippedFolderPath}`
+    );
 
     // 4. Build the restore command
     if (!collections || collections.length === 0) {
       const cmd = `mongorestore --uri="${restoreMongoUri}" --nsFrom="${dbName}.*" --nsTo="${dbName}.*" "${unzippedFolderPath}"`;
-      logMessage(`Running restore command: ${cmd}`);
+
+      await addLogEntry("restore-process", `Running restore command: ${cmd}`);
+
       await execPromise(cmd);
     } else {
       for (const col of collections) {
         const bsonPath = path.join(unzippedFolderPath, dbName, `${col}.bson`);
         if (!fs.existsSync(bsonPath)) {
-          logMessage(`Warning: collection file not found: ${bsonPath}`);
+          await addLogEntry(
+            "restore-process",
+            `Warning: collection file not found: ${bsonPath}`
+          );
           continue;
         }
         const cmd = `mongorestore --uri="${restoreMongoUri}" --nsFrom="${dbName}.${col}" --nsTo="${dbName}.${col}" --collection=${col} "${bsonPath}"`;
-        logMessage(`Restoring collection: ${col} via: ${cmd}`);
+        await addLogEntry(
+          "restore-process",
+          `Restoring collection: ${col} via: ${cmd}`
+        );
         await execPromise(cmd);
       }
     }
 
-    logMessage(`Restore completed for backup ${backupId}.`);
+    await addLogEntry(
+      "restore-process",
+      `Restore completed for backup ${backupId}.`
+    );
 
     // Update the Restore record status to SUCCESS
     await prisma.restore.update({
@@ -97,9 +118,14 @@ export async function restoreBackupFromDrive(options: RestoreOptions) {
     // 5. (Optional) Clean up local .zip and extracted folder
     fs.unlinkSync(localZipPath);
     fs.rmSync(unzippedFolderPath, { recursive: true, force: true });
-    logMessage(`Cleaned up local files.`);
-  } catch (error) {
+
+    await addLogEntry("restore-process", `Cleaned up local files.`);
+  } catch (error: any) {
     console.error(`[Restore Error]`, error);
+    await addLogEntry(
+      "restore-process",
+      `Restore failed for backup ${backupId}. Error: ${error.message}`
+    );
 
     // Update the Restore record status to FAILED
     await prisma.restore.update({

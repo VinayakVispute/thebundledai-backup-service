@@ -8,6 +8,7 @@ import { google } from "googleapis";
 import archiver from "archiver";
 import { createOrGetSubfolder } from "./createOrGetSubfolder";
 import { PrismaClient } from "@prisma/client";
+import { env } from "../env";
 
 const execPromise = util.promisify(exec);
 const prisma = new PrismaClient();
@@ -28,7 +29,7 @@ const GOOGLE_SERVICE_ACCOUNT_PATH = path.resolve(
   "../../config.json"
 );
 
-const DEFAULT_MAIN_FOLDER_ID = process.env.GOOGLE_DRIVE_MAIN_FOLDER_ID;
+const DEFAULT_MAIN_FOLDER_ID = env.GOOGLE_DRIVE_MAIN_FOLDER_ID;
 
 export async function backupDatabase(options: BackupOptions): Promise<void> {
   const {

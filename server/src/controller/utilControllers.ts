@@ -3,12 +3,12 @@ import { performDailyBackups } from "../utils/backupManager";
 import path from "path";
 import fs from "fs";
 import { restoreBackupFromDrive } from "../utils/restore";
+import { env } from "../env";
 
-const MONGO_URI_PRODUCTION = process.env.MONGO_URI_PRODUCTION;
-const MONGO_URI_DEVELOPMENT = process.env.MONGO_URI_DEVELOPMENT;
+const MONGO_URI_PRODUCTION = env.MONGO_URI_PRODUCTION;
+const MONGO_URI_DEVELOPMENT = env.MONGO_URI_DEVELOPMENT;
 
-const BASE_BACKUP_DIR =
-  process.env.BACKUP_DIR || path.join(__dirname, "backups");
+const BASE_BACKUP_DIR = path.join(__dirname, "backups");
 
 // Define interface for the success response
 interface BackupSuccessResponse {

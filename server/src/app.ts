@@ -6,6 +6,7 @@ import cron from "node-cron";
 import path from "path";
 import router from "./routes/utilRoutes";
 import { performDailyBackups } from "./utils/backupManager";
+import { env } from "./env";
 
 dotenv.config();
 
@@ -14,11 +15,11 @@ app.use(express.json());
 app.use("/api", router);
 
 // Env config
-const PORT = process.env.BACKUP_SERVICE_PORT || 4000;
+const PORT = env.BACKUP_SERVICE_PORT || 4000;
 const BASE_BACKUP_DIR = path.join(__dirname, "backups");
 
-const MONGO_URI_PRODUCTION = process.env.MONGO_URI_PRODUCTION;
-const MONGO_URI_DEVELOPMENT = process.env.MONGO_URI_DEVELOPMENT;
+const MONGO_URI_PRODUCTION = env.MONGO_URI_PRODUCTION;
+const MONGO_URI_DEVELOPMENT = env.MONGO_URI_DEVELOPMENT;
 
 if (!MONGO_URI_PRODUCTION || !MONGO_URI_DEVELOPMENT) {
   console.error(

@@ -1,8 +1,9 @@
 // apps/backup-service/src/backupManager.ts
 import path from "path";
 import { backupDatabase } from "./backup";
+import { env } from "../env";
 
-const MAIN_FOLDER_ID = process.env.GOOGLE_DRIVE_MAIN_FOLDER_ID;
+const MAIN_FOLDER_ID = env.GOOGLE_DRIVE_MAIN_FOLDER_ID;
 
 export async function performDailyBackups(
   baseBackupDir: string,

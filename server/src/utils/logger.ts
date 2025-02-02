@@ -5,5 +5,15 @@ export async function addLogEntry(streamName: string, message: string) {
   console.log(`$${timestamp} : ${streamName}: ${message}`);
   // XADD backup-logs * message "Backup started..." timestamp "2023-10-10T10:00:00.000Z"
   // Typically store a few fields; here we store message and timestamp
-  await redis.xadd(streamName, "*", "message", message, "timestamp", timestamp);
+  await redis.xadd(
+    streamName,
+    "MAXLEN",
+    "~",
+    1000,
+    "*",
+    "message",
+    message,
+    "timestamp",
+    timestamp
+  );
 }

@@ -1,17 +1,28 @@
-// apps/backup-service/src/index.ts
-
 import express from "express";
-import dotenv from "dotenv";
 import cron from "node-cron";
 import path from "path";
-import router from "./routes/utilRoutes";
-import { performDailyBackups } from "./utils/backupManager";
-import { env } from "./env";
+import { createServer } from "http";
+import { Server } from "socket.io";
 
-dotenv.config();
+import router from "./routes/utilRoutes";
+import { env } from "./env";
+import { performDailyBackups } from "./utils/backupManager";
+import { streamReader } from "./utils/streamReader";
 
 const app = express();
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+  },
+});
+
 app.use(express.json());
+
+app.get("/", (req, res) => {
+  res.send("Hello from Backup/Restore logging server!");
+});
 app.use("/api", router);
 
 // Env config
@@ -27,6 +38,20 @@ if (!MONGO_URI_PRODUCTION || !MONGO_URI_DEVELOPMENT) {
   );
   process.exit(1);
 }
+
+io.on("connection", (socket) => {
+  console.log(`User connected: ${socket.id}`);
+
+  socket.emit("welcome", "Connected to log server");
+
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
+});
+
+// Start reading from Redis stream(s) to push logs to clients
+streamReader(io, "backup-logs");
+streamReader(io, "restore-logs");
 
 app.listen(PORT, () => {
   console.log(`Backup service running on port ${PORT}`);

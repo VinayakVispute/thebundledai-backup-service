@@ -15,15 +15,17 @@ const prisma = new PrismaClient();
 interface RestoreOptions {
   backupId: string; // the ID of the Backup row in DB
   restoreMongoUri: string; // Mongo connection for `mongorestore`
-  collections?: string[]; // optional: if you only want to restore certain collections
+  collections?: string[]; // optional: if you only want to restore certain
+  requestId: string; // optional: unique ID for this restore job
 }
 
 export async function restoreBackupFromDrive(options: RestoreOptions) {
-  const { backupId, restoreMongoUri, collections } = options;
+  const { backupId, restoreMongoUri, collections, requestId } = options;
 
   await addLogEntry(
-    "restore-process",
-    `Starting restore for backup ID: ${backupId}`
+    "restore",
+    `Starting restore for backup ID: ${backupId}`,
+    requestId
   );
 
   // Create a new Restore record
@@ -47,7 +49,7 @@ export async function restoreBackupFromDrive(options: RestoreOptions) {
 
     if (!restoredBackup) {
       const errorMessage = `Backup with ID ${backupId} not found.`;
-      await addLogEntry("restore-process", errorMessage);
+      await addLogEntry("restore", errorMessage, requestId);
       throw new Error(errorMessage);
     }
 
@@ -55,7 +57,7 @@ export async function restoreBackupFromDrive(options: RestoreOptions) {
 
     if (!driveFileId) {
       const errorMessage = `Backup with ID ${backupId} does not have a Google Drive ID.`;
-      await addLogEntry("restore-process", errorMessage);
+      await addLogEntry("restore", errorMessage, requestId);
       throw new Error(errorMessage);
     }
 
@@ -66,23 +68,29 @@ export async function restoreBackupFromDrive(options: RestoreOptions) {
     await downloadFromGoogleDrive(driveFileId, localZipPath);
 
     await addLogEntry(
-      "restore-process",
-      `Downloaded backup '${fileName}' from Drive to '${localZipPath}'.`
+      "restore",
+      `Downloaded backup '${fileName}' from Drive to '${localZipPath}'.`,
+      requestId
     );
 
     // 3. Unzip the archive
     const unzippedFolderPath = localZipPath.replace(".zip", "");
     await unzipFile(localZipPath, unzippedFolderPath);
     await addLogEntry(
-      "restore-process",
-      `Unzipped backup into: ${unzippedFolderPath}`
+      "restore",
+      `Unzipped backup into: ${unzippedFolderPath}`,
+      requestId
     );
 
     // 4. Build the restore command
     if (!collections || collections.length === 0) {
       const cmd = `mongorestore --uri="${restoreMongoUri}" --nsFrom="${dbName}.*" --nsTo="${dbName}.*" "${unzippedFolderPath}"`;
 
-      await addLogEntry("restore-process", `Running restore command: ${cmd}`);
+      await addLogEntry(
+        "restore",
+        `Running restore command: ${cmd}`,
+        requestId
+      );
 
       await execPromise(cmd);
     } else {
@@ -90,23 +98,26 @@ export async function restoreBackupFromDrive(options: RestoreOptions) {
         const bsonPath = path.join(unzippedFolderPath, dbName, `${col}.bson`);
         if (!fs.existsSync(bsonPath)) {
           await addLogEntry(
-            "restore-process",
-            `Warning: collection file not found: ${bsonPath}`
+            "restore",
+            `Warning: collection file not found: ${bsonPath}`,
+            requestId
           );
           continue;
         }
         const cmd = `mongorestore --uri="${restoreMongoUri}" --nsFrom="${dbName}.${col}" --nsTo="${dbName}.${col}" --collection=${col} "${bsonPath}"`;
         await addLogEntry(
-          "restore-process",
-          `Restoring collection: ${col} via: ${cmd}`
+          "restore",
+          `Restoring collection: ${col} via: ${cmd}`,
+          requestId
         );
         await execPromise(cmd);
       }
     }
 
     await addLogEntry(
-      "restore-process",
-      `Restore completed for backup ${backupId}.`
+      "restore",
+      `Restore completed for backup ${backupId}.`,
+      requestId
     );
 
     // Update the Restore record status to SUCCESS
@@ -119,12 +130,13 @@ export async function restoreBackupFromDrive(options: RestoreOptions) {
     fs.unlinkSync(localZipPath);
     fs.rmSync(unzippedFolderPath, { recursive: true, force: true });
 
-    await addLogEntry("restore-process", `Cleaned up local files.`);
+    await addLogEntry("restore", `Cleaned up local files.`, requestId);
   } catch (error: any) {
     console.error(`[Restore Error]`, error);
     await addLogEntry(
-      "restore-process",
-      `Restore failed for backup ${backupId}. Error: ${error.message}`
+      "restore",
+      `Restore failed for backup ${backupId}. Error: ${error.message}`,
+      requestId
     );
 
     // Update the Restore record status to FAILED

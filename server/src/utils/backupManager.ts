@@ -10,13 +10,15 @@ export async function performDailyBackups(
   baseBackupDir: string,
   productionUri: string,
   developmentUri: string,
-  isManual: boolean
+  isManual: boolean,
+  requestId: string
 ) {
   const today = new Date().toISOString().split("T")[0]; // e.g. "2025-01-27"
 
   await addLogEntry(
-    "backup-process",
-    `Starting daily backups for date: ${today}`
+    "backup",
+    `Starting daily backups for date: ${today}`,
+    requestId
   );
 
   const baseDateFolder = isManual ? path.join(today, "manual") : today;
@@ -27,7 +29,6 @@ export async function performDailyBackups(
     baseDateFolder,
     "production"
   );
-  console.log(productionBackupPath);
   await backupDatabase({
     isProduction: true,
     dbName: "AIAPP",
@@ -37,6 +38,7 @@ export async function performDailyBackups(
     driveMainFolderId: MAIN_FOLDER_ID,
     dateFolderName: today, // subfolder = "2025-01-26"
     isManual,
+    requestId,
   });
 
   // Development
@@ -55,10 +57,12 @@ export async function performDailyBackups(
     driveMainFolderId: MAIN_FOLDER_ID,
     dateFolderName: today,
     isManual,
+    requestId,
   });
 
   await addLogEntry(
-    "backup-process",
-    `Daily backups completed for date: ${today}`
+    "backup",
+    `Daily backups completed for date: ${today}`,
+    requestId
   );
 }

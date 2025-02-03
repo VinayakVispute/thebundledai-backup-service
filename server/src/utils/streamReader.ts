@@ -3,7 +3,7 @@ import { Server } from "socket.io";
 import { redis } from "../services/redis";
 
 export function streamReader(io: Server, streamName: string) {
-  let lastId = "$";
+  let lastId = "0-0";
   // '$' means "start reading from new messages only".
   // If you want older messages, set it to '0-0'.
 
@@ -28,7 +28,7 @@ export function streamReader(io: Server, streamName: string) {
           // fields is something like ['message', 'Backup started...']
           const messageObj = parseFields(fields);
           // broadcast to clients
-          io.emit(streamName, { id, ...messageObj });
+          io.emit("logs", { id, streamName, ...messageObj });
 
           // update lastId so we don't re-read
           lastId = id;

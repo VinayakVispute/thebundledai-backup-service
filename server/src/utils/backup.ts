@@ -23,6 +23,7 @@ interface BackupOptions {
   driveMainFolderId?: string; // e.g. the ID for "data-backup"
   dateFolderName?: string; // e.g. "2025-01-26"
   isManual: boolean; // if this is a manual backup
+  requestId: string; // optional: unique ID for this backup job
 }
 
 const GOOGLE_SERVICE_ACCOUNT_PATH = path.resolve(
@@ -42,19 +43,21 @@ export async function backupDatabase(options: BackupOptions): Promise<void> {
     driveMainFolderId,
     dateFolderName,
     isManual,
+    requestId,
   } = options;
 
   const environment = isProduction ? "PRODUCTION" : "DEVELOPMENT";
   const triggeredBy = isManual ? "MANUAL" : "CRON";
 
   await addLogEntry(
-    "backup-process",
-    `Starting backup for ${environment} database: ${dbName}`
+    "backup",
+    `Starting backup for ${environment} database: ${dbName}`,
+    requestId
   );
 
   if (!DEFAULT_MAIN_FOLDER_ID) {
     const errorMessage = "No main Drive folder ID specified.";
-    await addLogEntry("backup-process", errorMessage);
+    await addLogEntry("backup", errorMessage, requestId);
     throw new Error(errorMessage);
   }
 
@@ -80,7 +83,11 @@ export async function backupDatabase(options: BackupOptions): Promise<void> {
   // 3. Zip the folder
   const zipFilePath = backupPath + ".zip"; // e.g. E:\...\2025-01-26\production.zip
   await zipDirectory(backupPath, zipFilePath);
-  await addLogEntry("backup-process", `Backup zipped at: ${zipFilePath}`);
+  await addLogEntry(
+    "backup",
+    `Backup zipped at: ${zipFilePath}`,
+    requestId
+  );
 
   // 4. (Optional) Upload to Google Drive
   if (saveToDrive) {
@@ -88,12 +95,12 @@ export async function backupDatabase(options: BackupOptions): Promise<void> {
 
     if (!mainFolderId) {
       const errorMessage = "No main Drive folder ID specified.";
-      await addLogEntry("backup-process", errorMessage);
+      await addLogEntry("backup", errorMessage, requestId);
       throw new Error(errorMessage);
     }
     if (!dateFolderName) {
       const errorMessage = "No date folder name specified for subfolder.";
-      await addLogEntry("backup-process", errorMessage);
+      await addLogEntry("backup", errorMessage, requestId);
       throw new Error(errorMessage);
     }
 
@@ -114,16 +121,18 @@ export async function backupDatabase(options: BackupOptions): Promise<void> {
     });
 
     await addLogEntry(
-      "backup-process",
-      `Uploaded ${dbName}.zip to Drive folder ${dateFolderName}.`
+      "backup",
+      `Uploaded ${dbName}.zip to Drive folder ${dateFolderName}.`,
+      requestId
     );
   }
 
   // 5. Optional: Remove local ZIP or keep it
   fs.unlinkSync(zipFilePath);
   await addLogEntry(
-    "backup-process",
-    `Backup process completed for ${environment} database: ${dbName}`
+    "backup",
+    `Backup process completed for ${environment} database: ${dbName}`,
+    requestId
   );
 }
 

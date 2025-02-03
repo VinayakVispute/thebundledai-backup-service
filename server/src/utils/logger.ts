@@ -1,6 +1,10 @@
 import { redis } from "../services/redis";
 
-export async function addLogEntry(streamName: string, message: string) {
+export async function addLogEntry(
+  streamName: string,
+  message: string,
+  requestId: string
+) {
   const timestamp = new Date().toISOString();
   console.log(`$${timestamp} : ${streamName}: ${message}`);
   // XADD backup-logs * message "Backup started..." timestamp "2023-10-10T10:00:00.000Z"
@@ -14,6 +18,8 @@ export async function addLogEntry(streamName: string, message: string) {
     "message",
     message,
     "timestamp",
-    timestamp
+    timestamp,
+    "requestId",
+    requestId
   );
 }

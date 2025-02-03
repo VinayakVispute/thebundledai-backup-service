@@ -25,53 +25,58 @@ const manualBackup = async (
   req: Request,
   res: Response<BackupSuccessResponse | BackupErrorResponse>
 ): Promise<void> => {
+  const requestId = crypto.randomUUID();
   try {
     if (!MONGO_URI_PRODUCTION || !MONGO_URI_DEVELOPMENT) {
       const errorMessage =
         "Missing MONGO_URI_PRODUCTION or MONGO_URI_DEVELOPMENT in environment variables.";
-      await addLogEntry("backup-process", errorMessage);
+      await addLogEntry("backup", errorMessage, requestId);
       throw new Error(errorMessage);
     }
 
-    await addLogEntry("backup-process", "Manual backup triggered.");
+    await addLogEntry("backup", "Manual backup triggered.", requestId);
 
     await performDailyBackups(
       BASE_BACKUP_DIR,
       MONGO_URI_PRODUCTION,
       MONGO_URI_DEVELOPMENT,
-      true
+      true,
+      requestId
     );
 
     await addLogEntry(
-      "backup-process",
-      "Manual backup completed successfully."
+      "backup",
+      "Manual backup completed successfully.",
+      requestId
     );
 
     res.json({ message: "Manual backup triggered successfully." });
   } catch (error: any) {
     console.error("Error in manual backup:", error);
     await addLogEntry(
-      "backup-process",
-      `Manual backup failed. Error: ${error.message}`
+      "backup",
+      `Manual backup failed. Error: ${error.message}`,
+      requestId
     );
     res.status(500).json({ error: "Manual backup failed." });
   }
 };
 
 const restoreBackup = async (req: Request, res: Response): Promise<void> => {
+  const requestId = crypto.randomUUID();
   try {
     const { date, backupId, dbName, collections } = req.body;
 
     if (!MONGO_URI_PRODUCTION || !MONGO_URI_DEVELOPMENT) {
       const errorMessage =
         "Missing MONGO_URI_PRODUCTION or MONGO_URI_DEVELOPMENT in environment variables.";
-      await addLogEntry("restore-process", errorMessage);
+      await addLogEntry("restore", errorMessage, requestId);
       throw new Error(errorMessage);
     }
 
     if (!date || !dbName) {
       const errorMessage = "Missing date or dbName.";
-      await addLogEntry("restore-process", errorMessage);
+      await addLogEntry("restore", errorMessage, requestId);
       res.status(400).json({ error: errorMessage });
       return;
     }
@@ -80,7 +85,7 @@ const restoreBackup = async (req: Request, res: Response): Promise<void> => {
 
     if (!fs.existsSync(backupPath)) {
       const errorMessage = "Backup path not found.";
-      await addLogEntry("restore-process", errorMessage);
+      await addLogEntry("restore", errorMessage, requestId);
       res.status(404).json({ error: errorMessage });
       return;
     }
@@ -92,23 +97,26 @@ const restoreBackup = async (req: Request, res: Response): Promise<void> => {
       mongoUri = MONGO_URI_DEVELOPMENT;
     } else {
       const errorMessage = 'dbName must be "production" or "development".';
-      await addLogEntry("restore-process", errorMessage);
+      await addLogEntry("restore", errorMessage, requestId);
       res.status(400).json({ error: errorMessage });
       return;
     }
 
     await addLogEntry(
-      "restore-process",
-      `Restore triggered for backup ID: ${backupId}`
+      "restore",
+      `Restore triggered for backup ID: ${backupId}`,
+      requestId
     );
     await restoreBackupFromDrive({
       backupId,
       restoreMongoUri: mongoUri,
       collections,
+      requestId,
     });
     await addLogEntry(
-      "restore-process",
-      `Restore completed for backup ID: ${backupId}`
+      "restore",
+      `Restore completed for backup ID: ${backupId}`,
+      requestId
     );
 
     res.json({ message: "Restore triggered successfully." });

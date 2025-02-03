@@ -15,6 +15,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
     origin: "*",
+    methods: ["GET", "POST"],
   },
 });
 
@@ -44,16 +45,16 @@ io.on("connection", (socket) => {
 
   socket.emit("welcome", "Connected to log server");
 
+  // Start reading from Redis stream(s) to push logs to clients
+  streamReader(io, "backup");
+  streamReader(io, "restore");
+
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
   });
 });
 
-// Start reading from Redis stream(s) to push logs to clients
-streamReader(io, "backup-logs");
-streamReader(io, "restore-logs");
-
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Backup service running on port ${PORT}`);
 });
 
@@ -61,17 +62,20 @@ app.listen(PORT, () => {
 // CRON JOB for daily backups
 // e.g. run at 1:00 AM server time
 // ==============================
-cron.schedule("* * * * *", async () => {
-  console.log("Daily backup job started...");
-  try {
-    await performDailyBackups(
-      BASE_BACKUP_DIR,
-      MONGO_URI_PRODUCTION,
-      MONGO_URI_DEVELOPMENT,
-      false
-    );
-    console.log("Daily backup job completed successfully.");
-  } catch (error) {
-    console.error("Error in daily backup job:", error);
-  }
-});
+// cron.schedule("* * * * *", async () => {
+//   // its scheduled to run at 1:00 AM
+//   console.log("Daily backup job started...");
+//   const requestId = crypto.randomUUID(); // generate a unique ID for this backup job
+//   try {
+//     await performDailyBackups(
+//       BASE_BACKUP_DIR,
+//       MONGO_URI_PRODUCTION,
+//       MONGO_URI_DEVELOPMENT,
+//       false,
+//       requestId
+//     );
+//     console.log("Daily backup job completed successfully.");
+//   } catch (error) {
+//     console.error("Error in daily backup job:", error);
+//   }
+// });

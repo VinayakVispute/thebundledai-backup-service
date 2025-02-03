@@ -5,6 +5,7 @@ import { CronJobTimer } from "@/components/cron-job-timer";
 import { AnalyticsGraph } from "@/components/analytics-graph";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { io } from "socket.io-client";
 
 export const metadata: Metadata = {
   title: "Dashboard",

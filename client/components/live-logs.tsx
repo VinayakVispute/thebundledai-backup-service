@@ -1,51 +1,32 @@
 "use client";
-
 import { useEffect, useRef, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-
-type Log = {
-  timestamp: string;
-  message: string;
-};
+import { LoggingArea } from "./loggingArea";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import io, { type Socket } from "socket.io-client";
 
 export function LiveLogs({ className }: { className?: string }) {
-  const [logs, setLogs] = useState<Log[]>([]);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    const eventSource = new EventSource("/api/logs");
-    eventSource.onmessage = (event) => {
-      const log = JSON.parse(event.data);
-      setLogs((prevLogs) => [...prevLogs, log].slice(-100)); // Keep only the last 100 logs
+    // Create the socket connection once on mount
+    const newSocket = io("http://localhost:4000");
+    setSocket(newSocket);
+
+    // Cleanup on unmount
+    return () => {
+      newSocket.disconnect();
+      setSocket(null);
     };
-    return () => eventSource.close();
   }, []);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [scrollRef]); //Corrected dependency
-
   return (
-    <Card className={className}>
-      <CardHeader>
+    <Card className={`${className} overflow-hidden`}>
+      <CardHeader className="border-b border-border">
         <CardTitle>Live Logs</CardTitle>
       </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[400px] w-full rounded border border-gray-200 dark:border-gray-700">
-          <div ref={scrollRef} className="p-4 font-mono text-sm">
-            {logs.map((log, index) => (
-              <div key={index} className="text-green-500 dark:text-green-400">
-                <span className="text-gray-500 dark:text-gray-400">
-                  {log.timestamp}
-                </span>{" "}
-                {log.message}
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
+      <CardContent className="h-full p-0">
+        {/* Only render LoggingArea if socket is defined */}
+        {socket && <LoggingArea socket={socket} />}
       </CardContent>
     </Card>
   );

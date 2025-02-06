@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "prebuild": "prisma generate && prisma migrate deploy",
     "start": "node dist/app",
     "dev": "tsc-watch --onSuccess \"node dist/app.js\"",
     "build": "tsc -p ."

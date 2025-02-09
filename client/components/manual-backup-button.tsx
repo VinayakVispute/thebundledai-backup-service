@@ -11,24 +11,17 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { useApiClient } from "@/hooks/useApiClient";
 
 export function ManualBackupButton() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const apiClient = useApiClient();
 
   const triggerManualBackup = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SERVER_BASE_URL}/api/manual-backup`,
-        {
-          method: "POST",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to trigger manual backup");
-      }
+      await apiClient.post("/api/manual-backup");
 
       toast({
         title: "Backup Initiated",

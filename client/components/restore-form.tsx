@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useApiClient } from "@/hooks/useApiClient";
 
 interface RestoreFormProps {
   backupId: string;
@@ -20,38 +21,33 @@ interface RestoreFormProps {
   onClose: () => void;
 }
 
-const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_BASE_URL;
-
 export function RestoreForm({ backupId, dbName, onClose }: RestoreFormProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [collections, setCollections] = useState("");
   const { toast } = useToast();
+  const apiClient = useApiClient();
 
   const handleRestore = async () => {
-    const response = await fetch(`${SERVER_BASE_URL}/api/restore`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    try {
+      await apiClient.post("/api/restore", {
         backupId,
         dbName,
         collections: collections
           ? collections.split(",").map((c) => c.trim())
           : undefined,
-      }),
-    });
+      });
 
-    if (response.ok) {
       toast({
-        title: "Restore initiated",
+        title: "Restore Initiated",
         description: "The backup restore process has been started.",
       });
+
       setIsOpen(false);
       onClose();
-    } else {
+    } catch (error) {
+      console.error("Error initiating restore:", error);
       toast({
-        title: "Restore failed",
+        title: "Restore Failed",
         description: "There was an error initiating the restore process.",
         variant: "destructive",
       });

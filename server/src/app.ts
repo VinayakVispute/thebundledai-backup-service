@@ -28,7 +28,7 @@ app.use("/api", router);
 
 // Env config
 const PORT = env.BACKUP_SERVICE_PORT || 4000;
-const BASE_BACKUP_DIR = path.join(__dirname, "backups");
+const BASE_BACKUP_DIR = path.join(__dirname, "..", "temp", "backups");
 
 const MONGO_URI_PRODUCTION = env.MONGO_URI_PRODUCTION;
 const MONGO_URI_DEVELOPMENT = env.MONGO_URI_DEVELOPMENT;

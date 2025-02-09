@@ -8,6 +8,7 @@ import { exec } from "child_process";
 import unzipper from "unzipper";
 import { PrismaClient } from "@prisma/client";
 import { addLogEntry } from "./logger";
+import { env } from "process";
 
 const execPromise = util.promisify(exec);
 const prisma = new PrismaClient();
@@ -18,6 +19,11 @@ interface RestoreOptions {
   collections?: string[]; // optional: if you only want to restore certain
   requestId: string; // optional: unique ID for this restore job
 }
+
+const GOOGLE_SERVICE_ACCOUNT_PATH = path.resolve(
+  __dirname,
+  "../../config.json"
+);
 
 export async function restoreBackupFromDrive(options: RestoreOptions) {
   const { backupId, restoreMongoUri, collections, requestId } = options;
@@ -62,8 +68,31 @@ export async function restoreBackupFromDrive(options: RestoreOptions) {
     }
 
     // 2. Download the .zip from Google Drive
-    const localZipPath = path.join(__dirname, "..", "tmp", fileName);
-    fs.mkdirSync(path.dirname(localZipPath), { recursive: true });
+    const localZipPath = path.join(__dirname, "..", "tmp", `${fileName}.zip`);
+
+    const dirPath = path.dirname(localZipPath);
+
+    // Check if path exists
+    if (fs.existsSync(localZipPath)) {
+      // If it's a file, remove it
+      if (fs.lstatSync(localZipPath).isFile()) {
+        fs.unlinkSync(localZipPath);
+      }
+    }
+
+    // Ensure the directory exists
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+    console.log("Checking path:", localZipPath);
+    console.log(
+      "Path type:",
+      fs.existsSync(localZipPath)
+        ? fs.lstatSync(localZipPath).isFile()
+          ? "File"
+          : "Directory"
+        : "Does not exist"
+    );
 
     await downloadFromGoogleDrive(driveFileId, localZipPath);
 
@@ -74,7 +103,10 @@ export async function restoreBackupFromDrive(options: RestoreOptions) {
     );
 
     // 3. Unzip the archive
-    const unzippedFolderPath = localZipPath.replace(".zip", "");
+    const unzippedFolderPath = path.join(
+      path.dirname(localZipPath),
+      fileName // Keep it simple
+    );
     await unzipFile(localZipPath, unzippedFolderPath);
     await addLogEntry(
       "restore",
@@ -151,12 +183,20 @@ export async function restoreBackupFromDrive(options: RestoreOptions) {
 
 /** Download a file from Google Drive by file ID. */
 async function downloadFromGoogleDrive(fileId: string, destPath: string) {
+  console.log(
+    `Downloading file from Drive: ${fileId}`,
+    GOOGLE_SERVICE_ACCOUNT_PATH
+  );
   const auth = new google.auth.GoogleAuth({
+    keyFile: GOOGLE_SERVICE_ACCOUNT_PATH,
     scopes: ["https://www.googleapis.com/auth/drive.readonly"],
   });
   const driveService = google.drive({ version: "v3", auth });
 
-  const dest = fs.createWriteStream(destPath);
+  const fixedDestPath = destPath.endsWith(".zip")
+    ? destPath
+    : `${destPath}.zip`;
+  const dest = fs.createWriteStream(fixedDestPath);
 
   // Streams the file from Drive into dest
   const res = await driveService.files.get(

@@ -65,7 +65,8 @@ const manualBackup = async (
 const restoreBackup = async (req: Request, res: Response): Promise<void> => {
   const requestId = crypto.randomUUID();
   try {
-    const { date, backupId, dbName, collections } = req.body;
+    const { backupId, dbName, collections } = req.body;
+    const date = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
 
     if (!MONGO_URI_PRODUCTION || !MONGO_URI_DEVELOPMENT) {
       const errorMessage =
@@ -78,15 +79,6 @@ const restoreBackup = async (req: Request, res: Response): Promise<void> => {
       const errorMessage = "Missing date or dbName.";
       await addLogEntry("restore", errorMessage, requestId);
       res.status(400).json({ error: errorMessage });
-      return;
-    }
-
-    const backupPath = path.join(BASE_BACKUP_DIR, date, dbName);
-
-    if (!fs.existsSync(backupPath)) {
-      const errorMessage = "Backup path not found.";
-      await addLogEntry("restore", errorMessage, requestId);
-      res.status(404).json({ error: errorMessage });
       return;
     }
 

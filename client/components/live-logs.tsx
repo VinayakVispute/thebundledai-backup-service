@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { LoggingArea } from "./loggingArea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import io, { type Socket } from "socket.io-client";

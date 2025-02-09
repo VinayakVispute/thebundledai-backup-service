@@ -83,6 +83,8 @@ export function LoggingArea({ socket }: { socket: Socket | null }) {
   }
 
   useEffect(() => {
+    if (!socket) return;
+
     const onLogs = (log: Log) => {
       setLogs((prevLogs) => [...prevLogs, log]);
     };

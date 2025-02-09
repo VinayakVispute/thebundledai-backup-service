@@ -4,7 +4,6 @@ import { LiveLogs } from "@/components/live-logs";
 import { CronJobTimer } from "@/components/cron-job-timer";
 import { AnalyticsGraph } from "@/components/analytics-graph";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { TotalBackupsCard } from "@/components/total-backups-card";
 import { ManualBackupButton } from "@/components/manual-backup-button";
 

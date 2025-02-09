@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Socket } from "socket.io-client";
 
@@ -72,7 +72,7 @@ const LogGroup = ({ logs }: { logs: Log[] }) => {
 export function LoggingArea({ socket }: { socket: Socket | null }) {
   const [activeStream, setActiveStream] = useState<string>("backup");
   const [logs, setLogs] = useState<Log[]>([]);
-
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   // Socket connection handling
   if (!socket) {
     return (
@@ -93,6 +93,12 @@ export function LoggingArea({ socket }: { socket: Socket | null }) {
       socket.off("logs", onLogs);
     };
   }, [socket]);
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, [scrollAreaRef]); //Corrected dependency
 
   // Filter logs by active stream and group by requestId
   const filteredLogs = logs.filter((log) => log.streamName === activeStream);
@@ -122,7 +128,7 @@ export function LoggingArea({ socket }: { socket: Socket | null }) {
           Restore Process
         </button>
       </div>
-      <ScrollArea className="h-[400px]">
+      <ScrollArea className="h-[400px]" ref={scrollAreaRef}>
         <div className="p-4">
           {groupedLogs &&
             Object.values(groupedLogs).map((logGroup, index) => (

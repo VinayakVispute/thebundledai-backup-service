@@ -20,13 +20,15 @@ interface RestoreFormProps {
   onClose: () => void;
 }
 
+const SERVER_BASE_URL = process.env.NEXT_PUBLIC_SERVER_BASE_URL;
+
 export function RestoreForm({ backupId, dbName, onClose }: RestoreFormProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [collections, setCollections] = useState("");
   const { toast } = useToast();
 
   const handleRestore = async () => {
-    const response = await fetch("/api/restore", {
+    const response = await fetch(`${SERVER_BASE_URL}/api/restore`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

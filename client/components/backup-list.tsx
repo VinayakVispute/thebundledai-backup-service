@@ -10,10 +10,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CloudIcon, HardDriveIcon } from "lucide-react";
+import { CloudIcon, HardDriveIcon, InfoIcon } from "lucide-react";
 import Link from "next/link";
 import { ScrollArea } from "./ui/scroll-area";
 import { RestoreForm } from "./restore-form";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type Backup = {
   id: string;
@@ -90,9 +96,27 @@ export function BackupList({ className }: { className?: string }) {
                     </Link>
                   )}
                 </div>
-                <Button onClick={() => setSelectedBackup(backup)}>
-                  Restore
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-block">
+                        {" "}
+                        {/* Wrap button in a span */}
+                        <Button disabled className="cursor-not-allowed">
+                          Restore
+                          <InfoIcon className="w-4 h-4 ml-2" />
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Restore functionality is currently unavailable.</p>
+                      <p>
+                        It will be enabled when needed, but we hope that time
+                        never comes.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             ))}
 

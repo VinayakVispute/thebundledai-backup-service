@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { currentUser } from "@clerk/nextjs/server";
 
 const prisma = new PrismaClient();
 
 export async function GET() {
   try {
+    const user = await currentUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
     const backups = await prisma.backup.findMany({
       orderBy: { createdAt: "desc" },
       take: 10, // Limit to the last 10 backups

@@ -5,6 +5,8 @@ import { CronJobTimer } from "@/components/cron-job-timer";
 import { AnalyticsGraph } from "@/components/analytics-graph";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { TotalBackupsCard } from "@/components/total-backups-card";
+import { ManualBackupButton } from "@/components/manual-backup-button";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -23,22 +25,8 @@ export default function DashboardPage() {
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <CronJobTimer />
-          <Card>
-            <CardHeader>
-              <CardTitle>Total Backups</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">Loading...</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Latest Backup</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">Loading...</div>
-            </CardContent>
-          </Card>
+          <TotalBackupsCard />
+          <ManualBackupButton />
         </div>
         <div className="grid gap-6 md:grid-cols-2">
           <BackupList className="md:col-span-1" />

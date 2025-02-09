@@ -9,11 +9,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { CloudIcon, HardDriveIcon } from "lucide-react";
 import Link from "next/link";
 import { ScrollArea } from "./ui/scroll-area";
+import { RestoreForm } from "./restore-form";
 
 type Backup = {
   id: string;
@@ -28,7 +28,7 @@ type Backup = {
 
 export function BackupList({ className }: { className?: string }) {
   const [backups, setBackups] = useState<Backup[]>([]);
-  const { toast } = useToast();
+  const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
 
   const fetchBackups = async () => {
     const response = await fetch("/api/backups");
@@ -38,32 +38,9 @@ export function BackupList({ className }: { className?: string }) {
     }
   };
 
-  const handleRestore = async (backupId: string) => {
-    const response = await fetch("/api/restore", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ backupId }),
-    });
-
-    if (response.ok) {
-      toast({
-        title: "Restore initiated",
-        description: "The backup restore process has been started.",
-      });
-    } else {
-      toast({
-        title: "Restore failed",
-        description: "There was an error initiating the restore process.",
-        variant: "destructive",
-      });
-    }
-  };
-
   useEffect(() => {
     fetchBackups();
-  }, []); // Added fetchBackups to the dependency array
+  }, []); //This line was already correct.  The comment was added for clarity.
 
   return (
     <Card className={className}>
@@ -113,7 +90,7 @@ export function BackupList({ className }: { className?: string }) {
                     </Link>
                   )}
                 </div>
-                <Button onClick={() => handleRestore(backup.id)}>
+                <Button onClick={() => setSelectedBackup(backup)}>
                   Restore
                 </Button>
               </div>
@@ -134,6 +111,13 @@ export function BackupList({ className }: { className?: string }) {
           </div>
         </ScrollArea>
       </CardContent>
+      {selectedBackup && (
+        <RestoreForm
+          backupId={selectedBackup.id}
+          dbName={selectedBackup.dbName}
+          onClose={() => setSelectedBackup(null)}
+        />
+      )}
     </Card>
   );
 }

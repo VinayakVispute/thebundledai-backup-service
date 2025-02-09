@@ -10,6 +10,7 @@
   },
   "prisma": {},
   "dependencies": {
+    "@clerk/nextjs": "^6.11.1",
     "@prisma/client": "^6.3.0",
     "@radix-ui/react-dialog": "^1.1.6",
     "@radix-ui/react-dropdown-menu": "^2.1.5",

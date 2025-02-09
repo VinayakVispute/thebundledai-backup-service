@@ -27,6 +27,7 @@ const additionalEnvSchema = z.object({
   GOOGLE_DRIVE_MAIN_FOLDER_ID: z
     .string()
     .min(1, "Google Drive folder ID is required"),
+  CLIENT_ORIGIN_URL: z.string().min(1, "Client origin URL is required"),
 });
 
 const envSchema = redisEnvSchema.merge(additionalEnvSchema);

@@ -8,13 +8,25 @@ import router from "./routes/utilRoutes";
 import { env } from "./env";
 import { performDailyBackups } from "./utils/backupManager";
 import { streamReader } from "./utils/streamReader";
+import { clerkMiddleware, requireAuth } from "@clerk/express";
 
 const app = express();
+
+app.use(
+  clerkMiddleware({
+    publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
+    secretKey: process.env.CLERK_SECRET_KEY,
+    debug: true, // For debugging Clerk's behavior
+  })
+);
+
 const httpServer = createServer(app);
+
+const CLIENT_ORIGIN_URL = env.CLIENT_ORIGIN_URL || "http://localhost:3000";
 
 const io = new Server(httpServer, {
   cors: {
-    origin: "*",
+    origin: `${CLIENT_ORIGIN_URL}`,
     methods: ["GET", "POST"],
   },
 });
@@ -24,7 +36,7 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("Hello from Backup/Restore logging server!");
 });
-app.use("/api", router);
+app.use("/api", requireAuth(), router);
 
 // Env config
 const PORT = env.BACKUP_SERVICE_PORT || 4000;
@@ -62,20 +74,20 @@ httpServer.listen(PORT, () => {
 // CRON JOB for daily backups
 // e.g. run at 1:00 AM server time
 // ==============================
-// cron.schedule("* * * * *", async () => {
-//   // its scheduled to run at 1:00 AM
-//   console.log("Daily backup job started...");
-//   const requestId = crypto.randomUUID(); // generate a unique ID for this backup job
-//   try {
-//     await performDailyBackups(
-//       BASE_BACKUP_DIR,
-//       MONGO_URI_PRODUCTION,
-//       MONGO_URI_DEVELOPMENT,
-//       false,
-//       requestId
-//     );
-//     console.log("Daily backup job completed successfully.");
-//   } catch (error) {
-//     console.error("Error in daily backup job:", error);
-//   }
-// });
+cron.schedule("* * * * *", async () => {
+  // its scheduled to run at 1:00 AM
+  console.log("Daily backup job started...");
+  const requestId = crypto.randomUUID(); // generate a unique ID for this backup job
+  try {
+    await performDailyBackups(
+      BASE_BACKUP_DIR,
+      MONGO_URI_PRODUCTION,
+      MONGO_URI_DEVELOPMENT,
+      false,
+      requestId
+    );
+    console.log("Daily backup job completed successfully.");
+  } catch (error) {
+    console.error("Error in daily backup job:", error);
+  }
+});

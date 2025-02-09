@@ -68,7 +68,7 @@ export async function restoreBackupFromDrive(options: RestoreOptions) {
     }
 
     // 2. Download the .zip from Google Drive
-    const localZipPath = path.join(__dirname, "..", "tmp", `${fileName}.zip`);
+    const localZipPath = path.join(__dirname, "..", "temp", `${fileName}.zip`);
 
     const dirPath = path.dirname(localZipPath);
 

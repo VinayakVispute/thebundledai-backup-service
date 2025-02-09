@@ -9,7 +9,7 @@ import { addLogEntry } from "../utils/logger";
 const MONGO_URI_PRODUCTION = env.MONGO_URI_PRODUCTION;
 const MONGO_URI_DEVELOPMENT = env.MONGO_URI_DEVELOPMENT;
 
-const BASE_BACKUP_DIR = path.join(__dirname, "backups");
+const BASE_BACKUP_DIR = path.join(__dirname, "..", "temp", "backups");
 
 // Define interface for the success response
 interface BackupSuccessResponse {

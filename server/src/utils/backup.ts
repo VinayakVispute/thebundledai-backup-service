@@ -82,14 +82,11 @@ export async function backupDatabase(options: BackupOptions): Promise<void> {
 
   // 3. Zip the folder
   const zipFilePath = backupPath + ".zip"; // e.g. E:\...\2025-01-26\production.zip
-  await zipDirectory(backupPath, zipFilePath);
-  await addLogEntry(
-    "backup",
-    `Backup zipped at: ${zipFilePath}`,
-    requestId
-  );
 
-  // 4. (Optional) Upload to Google Drive
+  await zipDirectory(backupPath, zipFilePath);
+  await addLogEntry("backup", `Backup zipped at: ${zipFilePath}`, requestId);
+
+  // 4.  Upload to Google Drive
   if (saveToDrive) {
     const mainFolderId = driveMainFolderId || DEFAULT_MAIN_FOLDER_ID;
 
@@ -127,8 +124,30 @@ export async function backupDatabase(options: BackupOptions): Promise<void> {
     );
   }
 
-  // 5. Optional: Remove local ZIP or keep it
-  fs.unlinkSync(zipFilePath);
+  // 5. Cleanup
+  try {
+    if (fs.existsSync(zipFilePath)) {
+      fs.unlinkSync(zipFilePath);
+      await addLogEntry(
+        "backup",
+        `Deleted ZIP file: ${zipFilePath}`,
+        requestId
+      );
+    }
+
+    if (fs.existsSync(backupPath)) {
+      fs.rmSync(backupPath, { recursive: true, force: true });
+      await addLogEntry(
+        "backup",
+        `Deleted backup folder: ${backupPath}`,
+        requestId
+      );
+    }
+  } catch (error: any) {
+    console.error("Error during cleanup:", error);
+    await addLogEntry("backup", `Cleanup failed: ${error.message}`, requestId);
+  }
+
   await addLogEntry(
     "backup",
     `Backup process completed for ${environment} database: ${dbName}`,

@@ -3,8 +3,8 @@ import cron from "node-cron";
 import path from "path";
 import { createServer } from "http";
 import { Server } from "socket.io";
-
 import router from "./routes/utilRoutes";
+import cors from "cors";
 import { env } from "./env";
 import { performDailyBackups } from "./utils/backupManager";
 import { streamReader } from "./utils/streamReader";
@@ -24,6 +24,13 @@ const httpServer = createServer(app);
 
 const CLIENT_ORIGIN_URL = env.CLIENT_ORIGIN_URL || "http://localhost:3000";
 
+app.use(
+  cors({
+    origin: [CLIENT_ORIGIN_URL],
+    credentials: true,
+  })
+);
+
 const io = new Server(httpServer, {
   cors: {
     origin: `${CLIENT_ORIGIN_URL}`,
@@ -31,6 +38,7 @@ const io = new Server(httpServer, {
   },
 });
 
+app.use();
 app.use(express.json());
 
 app.get("/", (req, res) => {

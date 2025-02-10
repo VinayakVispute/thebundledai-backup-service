@@ -28,6 +28,8 @@ const additionalEnvSchema = z.object({
     .string()
     .min(1, "Google Drive folder ID is required"),
   CLIENT_ORIGIN_URL: z.string().min(1, "Client origin URL is required"),
+  CLERK_PUBLISHABLE_KEY: z.string().min(1, "Clerk publishable key is required"),
+  CLERK_SECRET_KEY: z.string().min(1, "Clerk secret key is required"),
 });
 
 const envSchema = redisEnvSchema.merge(additionalEnvSchema);

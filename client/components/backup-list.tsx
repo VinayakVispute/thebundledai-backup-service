@@ -32,6 +32,10 @@ type Backup = {
   localPath: string | null;
 };
 
+const isBackupFailed = (backup: Backup) => {
+  return !backup.driveFileId || !backup.driveFolderId;
+};
+
 export function BackupList({ className }: { className?: string }) {
   const [backups, setBackups] = useState<Backup[]>([]);
   const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
@@ -79,7 +83,12 @@ export function BackupList({ className }: { className?: string }) {
                   <p className="text-sm text-muted-foreground">
                     {new Date(backup.createdAt).toLocaleString()}
                   </p>
-                  {backup.localPath ? (
+                  {isBackupFailed(backup) ? (
+                    <div className="flex items-center text-sm text-red-500">
+                      <CloudIcon className="w-4 h-4 mr-1" />
+                      Backup Failed
+                    </div>
+                  ) : backup.localPath ? (
                     <div className="flex items-center text-sm text-muted-foreground">
                       <HardDriveIcon className="w-4 h-4 mr-1" />
                       Local

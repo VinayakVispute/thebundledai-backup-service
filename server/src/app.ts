@@ -75,7 +75,7 @@ httpServer.listen(PORT, () => {
 // e.g. run at 1:00 AM server time
 // ==============================
 cron.schedule("0 1 * * *", async () => {
-  // its scheduled to run at 1:00 AM
+  // run at 1:00 AM server time
   console.log("Daily backup job started...");
   const requestId = crypto.randomUUID(); // generate a unique ID for this backup job
   try {

@@ -23,6 +23,8 @@ export function useApiClient(): AxiosInstance {
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      config.headers["Access-Control-Allow-Origin"] = window.location.origin;
+      config.headers["Access-Control-Allow-Credentials"] = "true";
       return config;
     });
 

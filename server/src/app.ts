@@ -14,8 +14,8 @@ const app = express();
 
 app.use(
   clerkMiddleware({
-    publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
-    secretKey: process.env.CLERK_SECRET_KEY,
+    publishableKey: env.CLERK_PUBLISHABLE_KEY,
+    secretKey: env.CLERK_SECRET_KEY,
     debug: true, // For debugging Clerk's behavior
   })
 );
@@ -74,7 +74,7 @@ httpServer.listen(PORT, () => {
 // CRON JOB for daily backups
 // e.g. run at 1:00 AM server time
 // ==============================
-cron.schedule("* * * * *", async () => {
+cron.schedule("0 1 * * *", async () => {
   // its scheduled to run at 1:00 AM
   console.log("Daily backup job started...");
   const requestId = crypto.randomUUID(); // generate a unique ID for this backup job

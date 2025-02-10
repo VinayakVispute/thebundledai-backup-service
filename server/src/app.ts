@@ -1,10 +1,11 @@
 import express from "express";
+import cors from "cors";
+
 import cron from "node-cron";
 import path from "path";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import router from "./routes/utilRoutes";
-import cors from "cors";
 import { env } from "./env";
 import { performDailyBackups } from "./utils/backupManager";
 import { streamReader } from "./utils/streamReader";
@@ -38,7 +39,6 @@ const io = new Server(httpServer, {
   },
 });
 
-app.use();
 app.use(express.json());
 
 app.get("/", (req, res) => {

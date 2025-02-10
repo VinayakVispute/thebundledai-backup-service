@@ -15,6 +15,15 @@ export function useApiClient(): AxiosInstance {
   const client = useMemo(() => {
     const instance = axios.create({
       baseURL: SERVER_BASE_URL,
+      withCredentials: true,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      // Prevent redirects during preflight
+      maxRedirects: 0,
+      validateStatus: (status) => {
+        return status >= 200 && status < 400;
+      },
     });
 
     // Attach an interceptor that fetches the token each time
@@ -23,8 +32,6 @@ export function useApiClient(): AxiosInstance {
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      config.headers["Access-Control-Allow-Origin"] = window.location.origin;
-      config.headers["Access-Control-Allow-Credentials"] = "true";
       return config;
     });
 

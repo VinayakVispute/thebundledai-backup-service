@@ -50,7 +50,7 @@ export async function performDailyBackups(
 
   await backupDatabase({
     isProduction: false,
-    dbName: "PAYMENT",
+    dbName: "AIAPP",
     backupPath: developmentBackupPath,
     mongoUri: developmentUri,
     saveToDrive: true,

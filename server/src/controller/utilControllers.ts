@@ -4,7 +4,8 @@ import path from "path";
 import fs from "fs";
 import { restoreBackupFromDrive } from "../utils/restore";
 import { env } from "../env";
-import { addLogEntry } from "../utils/logger";
+import { logInfo, logError, logWarning, addLogEntry } from "../utils/logger";
+import { v4 as uuidv4 } from "uuid";
 
 const MONGO_URI_PRODUCTION = env.MONGO_URI_PRODUCTION;
 const MONGO_URI_DEVELOPMENT = env.MONGO_URI_DEVELOPMENT;
@@ -25,16 +26,43 @@ const manualBackup = async (
   req: Request,
   res: Response<BackupSuccessResponse | BackupErrorResponse>
 ): Promise<void> => {
-  const requestId = crypto.randomUUID();
+  // Use the request ID from middleware or generate a new one
+  const requestId = req.requestId || uuidv4();
+  const source = "utilControllers.manualBackup";
+
   try {
     if (!MONGO_URI_PRODUCTION || !MONGO_URI_DEVELOPMENT) {
       const errorMessage =
         "Missing MONGO_URI_PRODUCTION or MONGO_URI_DEVELOPMENT in environment variables.";
-      await addLogEntry("backup", errorMessage, requestId);
+
+      logError({
+        message: errorMessage,
+        requestId,
+        source,
+        streamName: "backup",
+      });
+
+      // For backward compatibility
+      await addLogEntry("backup", errorMessage, requestId, "error", source);
+
       throw new Error(errorMessage);
     }
 
-    await addLogEntry("backup", "Manual backup triggered.", requestId);
+    logInfo({
+      message: "Manual backup triggered.",
+      requestId,
+      source,
+      streamName: "backup",
+    });
+
+    // For backward compatibility
+    await addLogEntry(
+      "backup",
+      "Manual backup triggered.",
+      requestId,
+      "info",
+      source
+    );
 
     await performDailyBackups(
       BASE_BACKUP_DIR,
@@ -44,27 +72,86 @@ const manualBackup = async (
       requestId
     );
 
+    logInfo({
+      message: "Manual backup completed successfully.",
+      requestId,
+      source,
+      streamName: "backup",
+    });
+
+    // For backward compatibility
     await addLogEntry(
       "backup",
       "Manual backup completed successfully.",
-      requestId
+      requestId,
+      "info",
+      source
     );
 
-    res.json({ message: "Manual backup triggered successfully." });
-  } catch (error: any) {
-    console.error("Error in manual backup:", error);
+    res.status(200).json({ message: "Backup completed successfully" });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    logError({
+      message: `Manual backup failed: ${errorMessage}`,
+      requestId,
+      source,
+      streamName: "backup",
+    });
+
+    // For backward compatibility
     await addLogEntry(
       "backup",
-      `Manual backup failed. Error: ${error.message}`,
-      requestId
+      `Manual backup failed: ${errorMessage}`,
+      requestId,
+      "error",
+      source
     );
-    res.status(500).json({ error: "Manual backup failed." });
+
+    res.status(500).json({ error: errorMessage });
   }
 };
 
 const restoreBackup = async (req: Request, res: Response): Promise<void> => {
-  const requestId = crypto.randomUUID();
+  const requestId = req.requestId || uuidv4();
+  const source = "utilControllers.restoreBackup";
+
   try {
+    const { fileId } = req.body;
+
+    if (!fileId) {
+      const errorMessage = "Missing fileId in request body";
+
+      logError({
+        message: errorMessage,
+        requestId,
+        source,
+        streamName: "restore",
+      });
+
+      // For backward compatibility
+      await addLogEntry("restore", errorMessage, requestId, "error", source);
+
+      res.status(400).json({ error: errorMessage });
+      return;
+    }
+
+    logInfo({
+      message: `Restore initiated for file ID: ${fileId}`,
+      requestId,
+      source,
+      streamName: "restore",
+    });
+
+    // For backward compatibility
+    await addLogEntry(
+      "restore",
+      `Restore initiated for file ID: ${fileId}`,
+      requestId,
+      "info",
+      source
+    );
+
     const { backupId, dbName, collections } = req.body;
     const date = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
 
@@ -111,10 +198,43 @@ const restoreBackup = async (req: Request, res: Response): Promise<void> => {
       requestId
     );
 
-    res.json({ message: "Restore triggered successfully." });
+    // For backward compatibility
+    await addLogEntry(
+      "restore",
+      `Restore completed for file ID: ${fileId}`,
+      requestId,
+      "info",
+      source
+    );
+
+    logInfo({
+      message: `Restore completed for file ID: ${fileId}`,
+      requestId,
+      source,
+      streamName: "restore",
+    });
+
+    res.status(200).json({ message: "Restore completed successfully" });
   } catch (error) {
-    console.error("Error restoring backup:", error);
-    res.status(500).json({ error: "Restore failed." });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    logError({
+      message: `Restore failed: ${errorMessage}`,
+      requestId,
+      source,
+      streamName: "restore",
+    });
+
+    // For backward compatibility
+    await addLogEntry(
+      "restore",
+      `Restore failed: ${errorMessage}`,
+      requestId,
+      "error",
+      source
+    );
+
+    res.status(500).json({ error: errorMessage });
   }
 };
 

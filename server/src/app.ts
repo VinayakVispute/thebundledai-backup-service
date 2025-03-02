@@ -1,17 +1,27 @@
 import express from "express";
 import cors from "cors";
-
 import cron from "node-cron";
 import path from "path";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import router from "./routes/utilRoutes";
+import utilRoutes from "./routes/utilRoutes";
+import healthRoutes from "./routes/healthRoutes";
 import { env } from "./env";
 import { performDailyBackups } from "./utils/backupManager";
 import { streamReader } from "./utils/streamReader";
 import { clerkMiddleware, requireAuth } from "@clerk/express";
+import {
+  requestLoggerMiddleware,
+  errorLoggerMiddleware,
+} from "./utils/loggerMiddleware";
+import { logInfo, logWarning, logError } from "./utils/logger";
+import { v4 as uuidv4 } from "uuid";
+import "newrelic";
 
 const app = express();
+
+// Initialize logging middleware before other middleware
+app.use(requestLoggerMiddleware);
 
 app.use(
   clerkMiddleware({
@@ -42,9 +52,19 @@ const io = new Server(httpServer, {
 app.use(express.json());
 
 app.get("/", (req, res) => {
+  logInfo({
+    message: "Root endpoint accessed",
+    requestId: req.requestId,
+    source: "GET /",
+  });
   res.send("Hello from Backup/Restore logging server!");
 });
-app.use("/api", requireAuth(), router);
+
+app.use("/api", requireAuth(), utilRoutes);
+app.use("/health", healthRoutes);
+
+// Add error logger middleware after routes
+app.use(errorLoggerMiddleware);
 
 // Env config
 const PORT = env.BACKUP_SERVICE_PORT || 4000;
@@ -54,14 +74,21 @@ const MONGO_URI_PRODUCTION = env.MONGO_URI_PRODUCTION;
 const MONGO_URI_DEVELOPMENT = env.MONGO_URI_DEVELOPMENT;
 
 if (!MONGO_URI_PRODUCTION || !MONGO_URI_DEVELOPMENT) {
-  console.error(
-    "Missing MONGO_URI_PRODUCTION or MONGO_URI_DEVELOPMENT in environment variables."
-  );
+  logError({
+    message:
+      "Missing MONGO_URI_PRODUCTION or MONGO_URI_DEVELOPMENT in environment variables.",
+    source: "app-initialization",
+  });
   process.exit(1);
 }
 
 io.on("connection", (socket) => {
-  console.log(`User connected: ${socket.id}`);
+  const connectionId = uuidv4();
+  logInfo({
+    message: `User connected: ${socket.id}`,
+    requestId: connectionId,
+    source: "socket.io",
+  });
 
   socket.emit("welcome", "Connected to log server");
 
@@ -70,12 +97,19 @@ io.on("connection", (socket) => {
   streamReader(io, "restore");
 
   socket.on("disconnect", () => {
-    console.log(`User disconnected: ${socket.id}`);
+    logInfo({
+      message: `User disconnected: ${socket.id}`,
+      requestId: connectionId,
+      source: "socket.io",
+    });
   });
 });
 
 httpServer.listen(PORT, () => {
-  console.log(`Backup service running on port ${PORT}`);
+  logInfo({
+    message: `Backup service running on port ${PORT}`,
+    source: "app-initialization",
+  });
 });
 
 // ==============================
@@ -84,8 +118,14 @@ httpServer.listen(PORT, () => {
 // ==============================
 cron.schedule("0 1 * * *", async () => {
   // run at 1:00 AM server time
-  console.log("Daily backup job started...");
-  const requestId = crypto.randomUUID(); // generate a unique ID for this backup job
+  const requestId = uuidv4(); // generate a unique ID for this backup job
+  logInfo({
+    message: "Daily backup job started...",
+    requestId,
+    source: "cron-job",
+    streamName: "backup",
+  });
+
   try {
     await performDailyBackups(
       BASE_BACKUP_DIR,
@@ -94,8 +134,37 @@ cron.schedule("0 1 * * *", async () => {
       false,
       requestId
     );
-    console.log("Daily backup job completed successfully.");
+    logInfo({
+      message: "Daily backup job completed successfully.",
+      requestId,
+      source: "cron-job",
+      streamName: "backup",
+    });
   } catch (error) {
-    console.error("Error in daily backup job:", error);
+    logError({
+      message: `Error in daily backup job: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      requestId,
+      source: "cron-job",
+      streamName: "backup",
+    });
   }
+});
+
+// Handle uncaught exceptions and unhandled rejections
+process.on("uncaughtException", (error) => {
+  logError({
+    message: `Uncaught Exception: ${error.message}\nStack: ${error.stack}`,
+    source: "process",
+  });
+  // Give logger time to write before exiting
+  setTimeout(() => process.exit(1), 1000);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  logError({
+    message: `Unhandled Rejection at: ${promise}\nReason: ${reason}`,
+    source: "process",
+  });
 });

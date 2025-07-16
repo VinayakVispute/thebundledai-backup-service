@@ -7,12 +7,11 @@ import util from "util";
 import { google } from "googleapis";
 import archiver from "archiver";
 import { createOrGetSubfolder } from "./createOrGetSubfolder";
-import { PrismaClient } from "@prisma/client";
 import { env } from "../env";
 import { addLogEntry } from "./logger";
+import { prisma } from "../services/prisma";
 
 const execPromise = util.promisify(exec);
-const prisma = new PrismaClient();
 
 interface BackupOptions {
   isProduction: boolean;

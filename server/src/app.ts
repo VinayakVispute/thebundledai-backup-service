@@ -16,7 +16,6 @@ import {
 } from "./utils/loggerMiddleware";
 import { logInfo, logWarning, logError } from "./utils/logger";
 import { v4 as uuidv4 } from "uuid";
-import "newrelic";
 
 const app = express();
 

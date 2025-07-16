@@ -6,12 +6,11 @@ import util from "util";
 import { google } from "googleapis";
 import { exec } from "child_process";
 import unzipper from "unzipper";
-import { PrismaClient } from "@prisma/client";
 import { addLogEntry } from "./logger";
 import { env } from "process";
+import { prisma } from "../services/prisma";
 
 const execPromise = util.promisify(exec);
-const prisma = new PrismaClient();
 
 interface RestoreOptions {
   backupId: string; // the ID of the Backup row in DB

@@ -3,3 +3,4 @@ dist
 .vscode
 .env*
 .ps1
+/generated/prisma
